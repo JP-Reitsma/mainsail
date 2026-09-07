@@ -1,8 +1,20 @@
 <template>
     <div>
-        <v-btn :loading="loadings.includes('backupDbButton')" small @click="openDialog">
-            {{ $t('Settings.GeneralTab.Backup') }}
-        </v-btn>
+        <div class="d-flex align-center ga-2 mb-2">
+            <v-btn
+                :loading="loadings.includes('backupDbButton')"
+                small
+                @click="openBackupDialog">
+                To Downloads
+            </v-btn>
+
+            <v-btn
+                :loading="loadings.includes('backupToPrinterConfigButton')"
+                small
+                @click="openPrinterBackupDialog">
+                To Printer Config
+            </v-btn>
+        </div>
         <v-dialog v-model="showDialog" persistent :width="360">
             <panel
                 :title="$t('Settings.GeneralTab.Backup')"
@@ -36,6 +48,54 @@
                 </v-card-text>
             </panel>
         </v-dialog>
+        <v-dialog v-model="showPrinterConfigDialog" persistent :width="360">
+            <panel
+                title="To Printer Config"
+                card-class="mainsail-backup-dialog"
+                :margin-bottom="false"
+                :icon="mdiHelpCircle">
+
+                <template #buttons>
+                    <v-btn icon tile @click="showPrinterConfigDialog = false">
+                        <v-icon>{{ mdiCloseThick }}</v-icon>
+                    </v-btn>
+                </template>
+
+                <v-card-text>
+                    <v-row>
+                        <v-col>
+                            <p class="mb-0">
+                                Save the selected Mainsail settings to
+                                <br>
+                                <code>config/.mainsail/backup-mainsail.json</code>
+                            </p>
+                            <br>
+                            <p class="mb-0">
+                                Any existing backup will be overwritten.
+                            </p>
+                        </v-col>
+                    </v-row>
+
+                    <v-row>
+                        <checkbox-list
+                            :options="backupableNamespaces"
+                            select-all
+                            @update:selectedCheckboxes="onSelectBackupCheckboxes" />
+                    </v-row>
+
+                    <v-row>
+                        <v-col class="text-center">
+                            <v-btn
+                                color="primary"
+                                :loading="loadings.includes('backupToPrinterConfig')"
+                                @click="backupToPrinterConfig">
+                                To Printer Config
+                            </v-btn>
+                        </v-col>
+                    </v-row>
+                </v-card-text>
+            </panel>
+        </v-dialog>
     </div>
 </template>
 
@@ -58,6 +118,7 @@ export default class SettingsGeneralTabBackupDatabase extends Mixins(BaseMixin, 
     mdiCloseThick = mdiCloseThick
 
     showDialog = false
+    showPrinterConfigDialog = false
     backupableNamespaces: { value: string; label: string | TranslateResult }[] = []
     backupCheckboxes: string[] = []
 
@@ -73,12 +134,29 @@ export default class SettingsGeneralTabBackupDatabase extends Mixins(BaseMixin, 
         await this.$store.dispatch('socket/addLoading', 'backupMainsail')
         await this.$store.dispatch('gui/backupMoonrakerDB', this.backupCheckboxes)
         await this.$store.dispatch('socket/removeLoading', 'backupMainsail')
-        this.closeDialog()
+        this.showDialog = false
     }
 
-    async openDialog() {
+    async backupToPrinterConfig() {
+        await this.$store.dispatch('socket/addLoading', 'backupToPrinterConfig')
+
+        await this.$store.dispatch(
+            'gui/backupMoonrakerDBToPrinterConfig',
+            this.backupCheckboxes
+        )
+
+        await this.$store.dispatch('socket/removeLoading', 'backupToPrinterConfig')
+
+        this.showPrinterConfigDialog = false
+    }
+
+    async openBackupDialog() {
         this.backupableNamespaces = await this.loadBackupableNamespaces()
         this.showDialog = true
+    }
+
+    openPrinterBackupDialog() {
+        this.showPrinterConfigDialog = true
     }
 
     closeDialog() {

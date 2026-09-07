@@ -7,6 +7,9 @@ import { getDefaultState } from './index'
 import { excludeKeys, themeDir } from '@/store/variables'
 import { deletePath, isRecord } from '@/plugins/helpers'
 
+const PRINTER_CONFIG_BACKUP_DIR = '.mainsail'
+const PRINTER_CONFIG_BACKUP_FILE = 'backup-mainsail.json'
+
 export const actions: ActionTree<GuiState, RootState> = {
     reset({ commit, dispatch }) {
         commit('reset')
@@ -304,10 +307,12 @@ export const actions: ActionTree<GuiState, RootState> = {
         window.location.reload()
     },
 
-    async backupMoonrakerDB({ rootGetters }, payload) {
-        const backup: Record<string, Record<string, unknown>> = {}
+async buildMoonrakerBackup({ rootGetters }, payload) {
+    const backup: Record<string, Record<string, unknown>> = {}
 
-        const responseMainsail = await fetch(rootGetters['socket/getUrl'] + '/server/database/item?namespace=mainsail')
+        const responseMainsail = await fetch(
+            rootGetters['socket/getUrl'] + '/server/database/item?namespace=mainsail'
+        )
         const objectsMainsail = await responseMainsail.json()
         const mainsailDb = (objectsMainsail?.result?.value ?? {}) as Record<string, unknown>
 
@@ -317,7 +322,9 @@ export const actions: ActionTree<GuiState, RootState> = {
 
                 const response = await fetch(url)
                 const objects = await response.json()
-                if (isRecord(objects?.result?.value)) backup[key] = { ...objects?.result?.value }
+                if (isRecord(objects?.result?.value)) {
+                    backup[key] = { ...objects.result.value }
+                }
             } else {
                 const mainsailValue = mainsailDb[key]
                 if (!isRecord(mainsailValue)) continue
@@ -332,14 +339,61 @@ export const actions: ActionTree<GuiState, RootState> = {
             }
         }
 
+        return backup
+    },
+
+    async backupMoonrakerDB({ dispatch }, payload) {
+        const backup = await dispatch('buildMoonrakerBackup', payload)
+
         const element = document.createElement('a')
         element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(backup)))
-        element.setAttribute('download', 'backup-mainsail.json')
+        element.setAttribute('download', PRINTER_CONFIG_BACKUP_FILE)
         element.style.display = 'none'
         document.body.appendChild(element)
         element.click()
 
         document.body.removeChild(element)
+    },
+
+    async backupMoonrakerDBToPrinterConfig({ dispatch }, payload) {
+        const backup = await dispatch('buildMoonrakerBackup', payload)
+
+        const json = JSON.stringify(backup, null, 2)
+
+        const file = new File(
+            [json],
+            PRINTER_CONFIG_BACKUP_FILE,
+            { type: 'application/json' }
+        )
+
+        return await dispatch(
+            'files/uploadFile',
+            {
+                file,
+                root: 'config',
+                path: PRINTER_CONFIG_BACKUP_DIR,
+            },
+            { root: true }
+        )
+    },
+
+    async restoreMoonrakerDBFromPrinterConfig({ dispatch, rootGetters }) {
+        const url =
+            `${rootGetters['socket/getUrl']}/server/files/config/` +
+            `${PRINTER_CONFIG_BACKUP_DIR}/${PRINTER_CONFIG_BACKUP_FILE}?time=${Date.now()}`
+
+        const restoreObjects = await fetch(url)
+            .then((response) => {
+                if (response.status !== 200)
+                    throw new Error('Backup file not found')
+
+                return response.json()
+            })
+
+        return await dispatch('restoreMoonrakerDB', {
+            dbCheckboxes: Object.keys(restoreObjects),
+            restoreObjects,
+        })
     },
 
     async restoreMoonrakerDB({ rootGetters }, payload) {

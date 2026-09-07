@@ -42,10 +42,16 @@
                     <v-select v-model="calcEtaTime" :items="calcEtaTimeItems" multiple hide-details dense outlined />
                 </settings-row>
                 <v-divider class="my-2" />
-                <settings-row :title="$t('Settings.GeneralTab.MainsailSettingsMoonrakerDb')" :dynamic-slot-width="true">
+                <settings-row title="Backup" :dynamic-slot-width="true">
                     <settings-general-tab-backup-database />
+                </settings-row>
+
+                <v-divider class="my-2" />
+
+                <settings-row title="Restore" :dynamic-slot-width="true">
                     <settings-general-tab-restore-database />
                 </settings-row>
+
                 <v-divider class="my-2" />
                 <settings-row :title="$t('Settings.GeneralTab.FactoryReset')" :dynamic-slot-width="true">
                     <settings-general-tab-reset-database />
