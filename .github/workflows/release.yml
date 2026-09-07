@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: 'develop'
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: get-npm-version
         id: package-version
@@ -85,25 +85,11 @@ jobs:
         uses: softprops/action-gh-release@v3
         id: create-release
         with:
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: v${{ github.event.inputs.version }}
           tag_name: v${{ github.event.inputs.version }}
           files: ./mainsail.zip
           body: ${{ steps.generate-changelog.outputs.content }}
-
-      - name: Copy remote configs to dist
-        shell: bash
-        run: cp ./remote/* ./dist/
-
-      - name: Upload to remote server
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: ${{ secrets.REMOTEHOST }}
-          username: ${{ secrets.REMOTEUSER }}
-          password: ${{ secrets.REMOTEPASSWORD }}
-          dangerous-clean-slate: true
-          exclude: .htaccess
-          local-dir: ./dist/
 
   update-changelog:
     needs: 'release'
@@ -115,7 +101,7 @@ jobs:
         with:
           ref: 'develop'
           fetch-depth: 0
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get latest tag
         id: latest_tag
@@ -149,7 +135,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: 'master'
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Fast-forward merge from develop
